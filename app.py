@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_cookies_manager import EncryptedCookieManager
+
 from usuarios import USUARIOS
 
 from config import (
@@ -35,13 +35,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-cookies = EncryptedCookieManager(
-    prefix="agenda_pro_acrylic_purple/",
-    password="AGENDA_PRO_COOKIE_2026_SEGURA",
-)
 
-if not cookies.ready():
-    st.stop()
 
 @st.cache_resource
 def inicializar_sistema() -> dict:
@@ -852,16 +846,12 @@ st.html(
 
 
 def cerrar_sesion() -> None:
-    cookies["autenticado"] = "0"
-    cookies.pop("usuario_actual", None)
-    cookies.pop("nombre_usuario", None)
-    cookies.save()
-
     st.session_state["autenticado"] = False
     st.session_state.pop("usuario_actual", None)
     st.session_state.pop("nombre_usuario", None)
     st.session_state["vista_principal"] = "calendario"
     st.session_state["pantalla_actual"] = "calendario"
+
 
 def validar_acceso(usuario: str, password: str) -> bool:
     usuario_normalizado = usuario.strip().lower()
@@ -873,20 +863,12 @@ def validar_acceso(usuario: str, password: str) -> bool:
     if str(datos_usuario.get("password", "")) != password:
         return False
 
-    nombre_usuario = datos_usuario.get(
+    st.session_state["autenticado"] = True
+    st.session_state["usuario_actual"] = usuario_normalizado
+    st.session_state["nombre_usuario"] = datos_usuario.get(
         "nombre",
         usuario_normalizado.title(),
     )
-
-    st.session_state["autenticado"] = True
-    st.session_state["usuario_actual"] = usuario_normalizado
-    st.session_state["nombre_usuario"] = nombre_usuario
-
-    cookies["autenticado"] = "1"
-    cookies["usuario_actual"] = usuario_normalizado
-    cookies["nombre_usuario"] = nombre_usuario
-    cookies.save()
-
     return True
 
 
@@ -942,19 +924,7 @@ def mostrar_inicio_sesion() -> None:
 
 
 if "autenticado" not in st.session_state:
-    autenticado_cookie = cookies.get("autenticado") == "1"
-
-    st.session_state["autenticado"] = autenticado_cookie
-
-    if autenticado_cookie:
-        st.session_state["usuario_actual"] = cookies.get(
-            "usuario_actual",
-            "",
-        )
-        st.session_state["nombre_usuario"] = cookies.get(
-            "nombre_usuario",
-            "Usuario",
-        )
+    st.session_state["autenticado"] = False
 
 
 if not st.session_state["autenticado"]:
