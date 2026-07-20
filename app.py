@@ -844,6 +844,11 @@ st.html(
 # AUTENTICACIÓN
 # ============================================================
 
+# Interruptor temporal del inicio de sesión.
+# False = acceso directo sin solicitar credenciales.
+# True = solicitar usuario y contraseña.
+LOGIN_ACTIVO = False
+
 
 def cerrar_sesion() -> None:
     st.session_state["autenticado"] = False
@@ -923,37 +928,49 @@ def mostrar_inicio_sesion() -> None:
         )
 
 
-if "autenticado" not in st.session_state:
-    st.session_state["autenticado"] = False
+if LOGIN_ACTIVO:
+    if "autenticado" not in st.session_state:
+        st.session_state["autenticado"] = False
 
-
-if not st.session_state["autenticado"]:
-    mostrar_inicio_sesion()
-    st.stop()
+    if not st.session_state["autenticado"]:
+        mostrar_inicio_sesion()
+        st.stop()
+else:
+    # Acceso temporal sin login.
+    # Se mantienen valores de sesión compatibles con el resto del sistema.
+    st.session_state["autenticado"] = True
+    st.session_state["usuario_actual"] = "acceso_temporal"
+    st.session_state["nombre_usuario"] = "Acceso temporal"
 
 
 inicializar_estado_calendario()
 
 
 with st.sidebar:
+    nombre_sesion = st.session_state.get(
+        "nombre_usuario",
+        "Usuario",
+    )
+
     st.markdown(
         f"""
         <div class="sidebar-brand">
             <div class="sidebar-brand-title">Agenda PRO</div>
             <div class="sidebar-brand-subtitle">
-                Sesión: {st.session_state.get("nombre_usuario", "Usuario")}
+                Sesión: {nombre_sesion}
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.button(
-        "🚪 Cerrar sesión",
-        key="cerrar_sesion_agenda",
-        use_container_width=True,
-        on_click=cerrar_sesion,
-    )
+    if LOGIN_ACTIVO:
+        st.button(
+            "🚪 Cerrar sesión",
+            key="cerrar_sesion_agenda",
+            use_container_width=True,
+            on_click=cerrar_sesion,
+        )
 
 
 
