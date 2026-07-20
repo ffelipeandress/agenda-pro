@@ -1,0 +1,17 @@
+# Base de datos
+database/*.db
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entorno virtual
+.venv/
+venv/
+
+# Respaldos
+backups/
+
+# Configuración local
+.env
