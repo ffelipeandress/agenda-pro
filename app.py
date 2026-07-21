@@ -1,8 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-from usuarios import USUARIOS
-
 from config import (
     PAGE_TITLE,
     PAGE_ICON,
@@ -841,40 +839,13 @@ st.html(
 
 
 # ============================================================
-# AUTENTICACIÓN
+# AUTENTICACIÓN CON GOOGLE
 # ============================================================
 
-# Interruptor temporal del inicio de sesión.
-# False = acceso directo sin solicitar credenciales.
-# True = solicitar usuario y contraseña.
-LOGIN_ACTIVO = False
-
-
-def cerrar_sesion() -> None:
-    st.session_state["autenticado"] = False
-    st.session_state.pop("usuario_actual", None)
-    st.session_state.pop("nombre_usuario", None)
-    st.session_state["vista_principal"] = "calendario"
-    st.session_state["pantalla_actual"] = "calendario"
-
-
-def validar_acceso(usuario: str, password: str) -> bool:
-    usuario_normalizado = usuario.strip().lower()
-    datos_usuario = USUARIOS.get(usuario_normalizado)
-
-    if datos_usuario is None:
-        return False
-
-    if str(datos_usuario.get("password", "")) != password:
-        return False
-
-    st.session_state["autenticado"] = True
-    st.session_state["usuario_actual"] = usuario_normalizado
-    st.session_state["nombre_usuario"] = datos_usuario.get(
-        "nombre",
-        usuario_normalizado.title(),
-    )
-    return True
+# Solo estas cuentas pueden entrar a Agenda PRO.
+CORREOS_AUTORIZADOS = {
+    "acrylic.purple2020@gmail.com",
+}
 
 
 def mostrar_inicio_sesion() -> None:
@@ -896,31 +867,13 @@ def mostrar_inicio_sesion() -> None:
     )
 
     with columna_centro:
-        with st.form("formulario_inicio_sesion", clear_on_submit=False):
-            usuario = st.text_input(
-                "Usuario",
-                placeholder="Ingresa tu usuario",
-                autocomplete="username",
-            )
-
-            password = st.text_input(
-                "Contraseña",
-                type="password",
-                placeholder="Ingresa tu contraseña",
-                autocomplete="current-password",
-            )
-
-            ingresar = st.form_submit_button(
-                "INGRESAR",
-                use_container_width=True,
-                type="primary",
-            )
-
-        if ingresar:
-            if validar_acceso(usuario, password):
-                st.rerun()
-            else:
-                st.error("Usuario o contraseña incorrectos.")
+        st.button(
+            "CONTINUAR CON GOOGLE",
+            key="iniciar_sesion_google",
+            use_container_width=True,
+            type="primary",
+            on_click=st.login,
+        )
 
         st.markdown(
             '<div class="login-footer">Acceso exclusivo de Acrylic Purple</div>',
@@ -928,30 +881,44 @@ def mostrar_inicio_sesion() -> None:
         )
 
 
-if LOGIN_ACTIVO:
-    if "autenticado" not in st.session_state:
-        st.session_state["autenticado"] = False
+def correo_usuario_actual() -> str:
+    return str(getattr(st.user, "email", "")).strip().lower()
 
-    if not st.session_state["autenticado"]:
-        mostrar_inicio_sesion()
-        st.stop()
-else:
-    # Acceso temporal sin login.
-    # Se mantienen valores de sesión compatibles con el resto del sistema.
-    st.session_state["autenticado"] = True
-    st.session_state["usuario_actual"] = "acceso_temporal"
-    st.session_state["nombre_usuario"] = "Acceso temporal"
+
+if not st.user.is_logged_in:
+    mostrar_inicio_sesion()
+    st.stop()
+
+correo_actual = correo_usuario_actual()
+
+if correo_actual not in CORREOS_AUTORIZADOS:
+    st.error(
+        "Esta cuenta de Google no tiene autorización para acceder a Agenda PRO."
+    )
+    st.caption(f"Cuenta utilizada: {correo_actual or 'correo no disponible'}")
+    st.button(
+        "CERRAR SESIÓN",
+        key="cerrar_sesion_no_autorizada",
+        use_container_width=True,
+        on_click=st.logout,
+    )
+    st.stop()
+
+nombre_sesion = str(
+    getattr(st.user, "name", "")
+    or correo_actual.split("@")[0].replace(".", " ").title()
+)
+
+# Se conservan estas claves para compatibilidad con cualquier módulo antiguo.
+st.session_state["autenticado"] = True
+st.session_state["usuario_actual"] = correo_actual
+st.session_state["nombre_usuario"] = nombre_sesion
 
 
 inicializar_estado_calendario()
 
 
 with st.sidebar:
-    nombre_sesion = st.session_state.get(
-        "nombre_usuario",
-        "Usuario",
-    )
-
     st.markdown(
         f"""
         <div class="sidebar-brand">
@@ -964,14 +931,12 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    if LOGIN_ACTIVO:
-        st.button(
-            "🚪 Cerrar sesión",
-            key="cerrar_sesion_agenda",
-            use_container_width=True,
-            on_click=cerrar_sesion,
-        )
-
+    st.button(
+        "🚪 Cerrar sesión",
+        key="cerrar_sesion_agenda",
+        use_container_width=True,
+        on_click=st.logout,
+    )
 
 
 # ============================================================
